@@ -71,34 +71,46 @@ var majorProperties = [][]string{
 	{"неукротимой магии", "Пока вы настроены на артефакт, вы получаете бонус +2 к броскам атаки заклинаниями и Сл спасбросков ваших заклинаний."},
 }
 
+var itemsLen int = len(items) + 1
+var specLen int = len(specialProperties) + 1
+var minorLen int = len(minorProperties) + 1
+var majorLen int = len(majorProperties) + 1
+
 //--------------- Генерация предметов по словарю ----------------
+// Обычный магический предмет
 func createCommon() string {
 	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randMinorProperties := rand.Intn(11)
-	//вывод: предмет + минорное свойство. минорное описание
-	item := fmt.Sprint("*", items[randItem][0], " ", minorProperties[randMinorProperties][0], ".* ", minorProperties[randMinorProperties][1])
-	return item
+	itemNumder := rand.Intn(itemsLen)
+	minorNumber := rand.Intn(minorLen)
+	itemName := items[itemNumder][0]                    //случайное название предмета
+	minorName := minorProperties[minorNumber][0]        // случайное минорное свойство
+	minorDescription := minorProperties[minorNumber][1] // описание свойства
+	itemTxt := fmt.Sprint("*", itemName, " ", minorName, ".* ", minorDescription)
+	return itemTxt
 }
 
+// Необычный магический предмет
 func createUncommon() string {
 	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randMajorProperties := rand.Intn(15)
-	//вывод: предмет + мажорное свойство. мажорное описание
-	item := fmt.Sprint("*", items[randItem][0], " ", majorProperties[randMajorProperties][0], ".* ", majorProperties[randMajorProperties][1])
+	itemNumder := rand.Intn(itemsLen)
+	majorNumber := rand.Intn(majorLen)
+	itemName := items[itemNumder][0]
+	majorName := majorProperties[majorNumber][0]
+	majorDescription := majorProperties[rand.Intn(majorLen)][1]
+	item := fmt.Sprint("*", itemName, " ", majorName, ".* ", majorDescription)
 	return item
 }
 
+// Редкий магический предмет
 func createRare() string {
 	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randSpecProperties := rand.Intn(15)
-	randMinorProperties := rand.Intn(11)
-	genusNumb1, _ := strconv.Atoi(items[randItem][1]) //родовое окончание
-	genusNumb2, _ := strconv.Atoi(specialProperties[randSpecProperties][1]) // склонение
+	itemNumder := rand.Intn(itemsLen)
+	randSpecProperties := rand.Intn(specLen)
+	randMinorProperties := rand.Intn(minorLen)
+	genusNumb1, _ := strconv.Atoi(items[itemNumder][1])
+	genusNumb2, _ := strconv.Atoi(specialProperties[randSpecProperties][1])
 	//вывод: специальное свойство + родовое окончание + предмет + минорное свойство. специальное описание. Также + минорное описание
-	item := fmt.Sprint("*", specialProperties[randSpecProperties][0], genericEnding[genusNumb1][genusNumb2], " ", strings.ToLower(items[randItem][0]), " ",
+	item := fmt.Sprint("*", specialProperties[randSpecProperties][0], genericEnding[genusNumb1][genusNumb2], " ", strings.ToLower(items[itemNumder][0]), " ",
 		minorProperties[randMinorProperties][0], ".* ", specialProperties[randSpecProperties][2],
 		strings.Replace(minorProperties[randMinorProperties][1], "Пока вы настроены на артефакт,", " Также", 1))
 	return item
@@ -106,9 +118,9 @@ func createRare() string {
 
 func createVeryRare() string {
 	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randSpecProperties := rand.Intn(15)
-	randMajorProperties := rand.Intn(15)
+	randItem := rand.Intn(itemsLen)
+	randSpecProperties := rand.Intn(specLen)
+	randMajorProperties := rand.Intn(majorLen)
 	genusNumb1, _ := strconv.Atoi(items[randItem][1])
 	genusNumb2, _ := strconv.Atoi(specialProperties[randSpecProperties][1])
 	//вывод: специальное свойство + родовое окончание + предмет + мажорное свойство. специальное описание. Также + мажорное описание
