@@ -15,7 +15,7 @@ import (
 
 // Выбор случайного предмета
 func itemChoice() (string, string, int) {
-	// список предметов
+	// Список предметов
 	file, err := os.Open("./items.csv")
 	if err != nil {
 		panic(err)
@@ -28,11 +28,11 @@ func itemChoice() (string, string, int) {
 		log.Fatal(err)
 	}
 	rand.Seed(time.Now().UnixNano())
-	itemIndex := rand.Intn(len(itemsDict) + 1)
-	descriptionIndex := rand.Intn(3) + 2
-	itemName := itemsDict[itemIndex][0]
-	itemDescription := itemsDict[itemIndex][descriptionIndex]
-	itemGenus, _ := strconv.Atoi(itemsDict[itemIndex][1])
+	itemIndex := rand.Intn(len(itemsDict) + 1) 		// Индекс предмета
+	descriptionIndex := rand.Intn(3) + 2 			// Индекс описания
+	itemName := itemsDict[itemIndex][0] 			// Название предмета
+	itemDescription := itemsDict[itemIndex][descriptionIndex] // Описание предмета
+	itemGenus, _ := strconv.Atoi(itemsDict[itemIndex][1]) // Для индексации родовых окончания
 	return itemName, itemDescription, itemGenus
 }
 
