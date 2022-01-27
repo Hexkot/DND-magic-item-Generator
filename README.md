@@ -7,6 +7,5 @@ D&amp;D magic item generator like in Diablo
 
 Сейчас в проекте есть только 4 типа предметов, но нет легендарных — таблицу для легендарных предметов я всё ещё составляю.
 
-Bot in telegram: https://t.me/Sombrium_demo_bot
 inspired: http://d3name.ru/?2065022559
 https://github.com/nerevar/d3namegen
