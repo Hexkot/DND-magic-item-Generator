@@ -20,7 +20,7 @@ func main() {
 	c2 := make(chan artifact)
 	art := artifact{}
 
-	bot, err := tgbotapi.NewBotAPI("1923989742:AAHjSdwUabfg-pzTLl0xBxMAnjlEuqEOAvo")
+	bot, err := tgbotapi.NewBotAPI("myAwesomeApi")
 	if err != nil {
 		log.Panic(err)
 	}
