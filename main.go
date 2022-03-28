@@ -113,10 +113,10 @@ type item struct {
 }
 
 const (
-	itemsList         = "./items.csv"         // список предметов с описаниями и указанием на родовое окончание
-	postAttributeList = "./postAttribute.csv" // список  пост-атрибутов (после названия) с описаниями
-	preAttributeList  = "./preAttribute.csv"  // список пре-атрибутов (перед названием) с описаниями и указанием на тип склонения
-	engingsList       = "./engings.csv"       // список окончаний прилагательных
+	itemsList         = "./lists/items.csv"         // список предметов с описаниями и указанием на родовое окончание
+	postAttributeList = "./lists/postAttribute.csv" // список  пост-атрибутов (после названия) с описаниями
+	preAttributeList  = "./lists/preAttribute.csv"  // список пре-атрибутов (перед названием) с описаниями и указанием на тип склонения
+	engingsList       = "./lists/engings.csv"       // список окончаний прилагательных
 )
 
 func dump(list string) [][]string {
