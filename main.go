@@ -1,136 +1,29 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
+	"strconv"
 	"strings"
 	"time"
-
-	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-// ----------------- словари -----------------
-// Словарь предметов
-// числовые значения индексируют родовые окончания: male - 0,  female - 1,  neutral - 2,  pl. - 3
-var items = [][]string{
-	{"Брошь", "1"}, {"Кольцо", "2"}, {"Шляпа", "1"}, {"Браслет", "0"}, {"Плащ", "0"}, {"Амулет", "0"}, {"Подвеска", "1"},
-	{"Ожерелье", "2"}, {"Веер", "0"}, {"Медальон", "0"}, {"Перчатки", "3"}, {"Очки", "3"}, {"Диадема", "1"}, {"Сапоги", "3"},
-}
-
-// Словарь минорных свойств и описаний
-var minorProperties = [][]string{
-	{"умений", "Пока вы настроены на артефакт, вы получаете владение одним навыком на выбор Мастера."},
-	{"здоровья", "Пока вы настроены на артефакт, вы обладаете иммунитетом к болезням."},
-	{"иммунитета", "Пока вы настроены на артефакт, вы обладаете иммунитетом к ядам."},
-	{"защиты", "Пока вы настроены на артефакт, вы получаете бонус +1 к КД."},
-	{"паука", "Пока вы настроены на артефакт, вы получаете скорость лазания 30 фт."},
-	{"плутовства", "Пока вы настроены на артефакт, вы владеете заговором малая иллюзия."},
-	{"чародейства", "Пока вы настроены на артефакт, вы получаете бонус +1 к броскам атаки заклинаниями и Сл спасбросков ваших заклинаний."},
-	{"обнаружения", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание обнаружение добра и зла."},
-	{"яда", "Пока вы настроены на артефакт, если вы попадаете атакой оружием, цель дополнительно получает 1к4 урона ядом."},
-	{"правды", "Пока вы настроены на артефакт, вы получаете преимущество на проверки Мудрости (Проницательность)."},
-	{"прыжков", "Пока вы настроены на артефакт, вы можете бонусным действием накладывать заклинание прыжок, но нацеливаясь при этом только на себя."},
-}
-
-// Словарь специальных свойств и описаний
-// числовые значения индексируют склонения родовых окончаний
-var specialProperties = [][]string{
-	{"Усиливающ", "1", "Пока вы настроены на артефакт, одна из ваших характеристик (на выбор Мастера) увеличивается на 2, с максимумом 24."},
-	{"Регенерирующ", "1", "Пока вы настроены на артефакт, вы восстанавливаете 1к4 хита в начале каждого своего хода, если у вас есть хотя бы 1 хит."},
-	{"Белоснежн", "2", "Пока вы настроены на артефакт, вы получаете сопротивление к урону холодом."},
-	{"Ускоряющ", "1", "Пока вы настроены на артефакт, ваша скорость ходьбы увеличивается на 10 футов."},
-	{"Ежевичн", "2", "Пока вы настроены на артефакт, вы можете раз в день сотворять заклинание чудо-ягоды."},
-	{"Светящ", "3", "Пока вы настроены на артефакт, вы владеете заговором свет."},
-	{"Гроз", "4", "Пока вы настроены на артефакт, вы получаете сопротивление к урону звуком."},
-	{"Сер", "2", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание облако тумана."},
-	{"Надменн", "2", "Пока вы настроены на артефакт, вы не можете быть очарованы, испуганы, ослеплены и ошеломлены."},
-	{"Сторожев", "4", "Пока вы настроены на артефакт, вас невозможно застать врасплох."},
-	{"Голуб", "4", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание ледяной кинжал."},
-	{"Хрустальн", "2", "Пока вы настроены на артефакт, вы получаете сопротивление психической энергии."},
-	{"Дымящ", "3", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание туман."},
-	{"Искрящ", "3", "Пока вы настроены на артефакт, вы владеете заговором электрошок."},
-	{"Перерождающ", "3", "Пока вы настроены на артефакт, если вы потеряете сознание, то будете стабилизированы."},
-}
-var genericEnding = [][]string{{"m", "ий", "ый", "ийся", "ой"}, {"f", "ая", "ая", "аяся", "ая"}, {"n", "ее", "ое", "ееся", "ое"}, {"pl", "ие", "ые", "иеся", "ые"}} //родовые окончания
-
-// Словарь мажорных свойств и описаний
-var majorProperties = [][]string{
-	{"опеки", "Пока вы настроены на артефакт, вы получаете бонус +2 к КД и спасброскам."},
-	{"всезнания", "Пока вы настроены на артефакт, вы получаете владение двумя навыками на выбор Мастера. Вы также можете удвоить бонус мастерства для любого навыка, которым владеете."},
-	{"с чёрным опалом", "Пока вы настроены на артефакт, если вы попадаете атакой оружием, цель дополнительно получает 1к6 некротического урона."},
-	{"взрыва", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание волна грома как заклинание 2-го уровня (Сл спасброска 16)."},
-	{"путешествий", "Пока вы настроены на артефакт, вы можете телепортироваться на 15 футов в свободное пространство, видимое вами."},
-	{"ангелов", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание левитация, но нацеливаясь при этом только на себя."},
-	{"с колокольчиком", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание сигнал тревоги как ритуал."},
-	{"готовности", "Пока вы настроены на артефакт, вы получаете бонус 1к8 к броску инициативы."},
-	{"дыхания", "Пока вы настроены на артефакт, вы можете задерживать дыхание на неограниченное время."},
-	{"с мерцающим топазом", "Пока вы настроены на артефакт, если вы попадаете атакой оружием, цель дополнительно получает 1к6 дробящего урона."},
-	{"Икара", "Пока вы настроены на артефакт, вы не получаете урона от падения."},
-	{"неуязвимости", "Пока вы настроены на артефакт, вы получаете сопротивление к колющему, режущему и дробящему урону."},
-	{"с мерцающими рунами", "Пока вы настроены на артефакт, вы можете раз в день сотворить заклинание гадание без материальных компонентов."},
-	{"трикстера", "Пока вы настроены на артефакт, вы можете неограниченно накладывать заклинание безмолвный образ."},
-	{"неукротимой магии", "Пока вы настроены на артефакт, вы получаете бонус +2 к броскам атаки заклинаниями и Сл спасбросков ваших заклинаний."},
-}
-
-//--------------- Генерация предметов по словарю ----------------
-func createCommon() string {
-	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randMinorProperties := rand.Intn(11)
-	//вывод: предмет + минорное свойство. минорное описание
-	item := fmt.Sprint("*", items[randItem][0], " ", minorProperties[randMinorProperties][0], ".* ", minorProperties[randMinorProperties][1])
-	return item
-}
-
-func createUncommon() string {
-	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randMajorProperties := rand.Intn(15)
-	//вывод: предмет + мажорное свойство. мажорное описание
-	item := fmt.Sprint("*", items[randItem][0], " ", majorProperties[randMajorProperties][0], ".* ", majorProperties[randMajorProperties][1])
-	return item
-}
-
-func createRare() string {
-	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randSpecProperties := rand.Intn(15)
-	randMinorProperties := rand.Intn(11)
-	genusNumb1, _ := strconv.Atoi(items[randItem][1])
-	genusNumb2, _ := strconv.Atoi(specialProperties[randSpecProperties][1])
-	//вывод: специальное свойство + родовое окончание + предмет + минорное свойство. специальное описание. Также + минорное описание
-
-	item := fmt.Sprint("*", specialProperties[randSpecProperties][0], genericEnding[genusNumb1][genusNumb2], " ", strings.ToLower(items[randItem][0]), " ",
-		minorProperties[randMinorProperties][0], ".* ", specialProperties[randSpecProperties][2],
-		strings.Replace(minorProperties[randMinorProperties][1], "Пока вы настроены на артефакт,", " Также", 1))
-	return item
-}
-
-func createVeryRare() string {
-	rand.Seed(time.Now().UnixNano())
-	randItem := rand.Intn(14)
-	randSpecProperties := rand.Intn(15)
-	randMajorProperties := rand.Intn(15)
-	genusNumb1, _ := strconv.Atoi(items[randItem][1])
-	genusNumb2, _ := strconv.Atoi(specialProperties[randSpecProperties][1])
-	//вывод: специальное свойство + родовое окончание + предмет + мажорное свойство. специальное описание. Также + мажорное описание
-
-	item := fmt.Sprint("*", specialProperties[randSpecProperties][0], genericEnding[genusNumb1][genusNumb2], " ", strings.ToLower(items[randItem][0]), " ",
-		minorProperties[randMajorProperties][0], ".* ", specialProperties[randSpecProperties][2],
-		strings.Replace(minorProperties[randMajorProperties][1], "Пока вы настроены на артефакт,", " Также", 1))
-	return item
-}
-
 func main() {
-	bot, err := tgbotapi.NewBotAPI("5006332932:AAGDFlO918zhAx2jspfeLsMOYV0kcSZYqsc")
+	// пайплайн артефактов
+	c := make(chan artifact)
+	c1 := make(chan artifact)
+	c2 := make(chan artifact)
+	art := artifact{}
 
+	bot, err := tgbotapi.NewBotAPI("1923989742:AAHjSdwUabfg-pzTLl0xBxMAnjlEuqEOAvo")
 	if err != nil {
 		log.Panic(err)
 	}
-
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -142,31 +35,155 @@ func main() {
 		if update.Message != nil {
 			switch update.Message.Text {
 			case "/common":
-				var newItem string = createCommon()
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, newItem)
+				common := createCommon(art, c) //не объявлять в начале кода! внутри функции рандома
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, common)
 				msg.ParseMode = "markdown"
 				bot.Send(msg)
 			case "/uncommon":
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, createUncommon())
+				uncommon := createUncommon(art, c, c1)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, uncommon)
 				msg.ParseMode = "markdown"
 				bot.Send(msg)
 			case "/rare":
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, createRare())
+				rare := createRare(art, c, c1, c2)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, rare)
 				msg.ParseMode = "markdown"
 				bot.Send(msg)
-			case "/very_rare":
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, createVeryRare())
-				msg.ParseMode = "markdown"
-				bot.Send(msg)
-			case "/legendary":
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Легендарных предметов пока не подвезли.")
+			case "/random 3":
+				var text string
+				for i := 0; i < 3; i++ {
+					rand.Seed(time.Now().UnixNano())
+					rand := rand.Intn(3)
+					switch rand {
+					case 0:
+						common := createCommon(art, c)
+						text += common
+					case 1:
+						uncommon := createUncommon(art, c, c1)
+						text += uncommon
+					case 2:
+						rare := createRare(art, c, c1, c2)
+						text += rare
+					}
+					text += "\n"
+				}
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 				msg.ParseMode = "markdown"
 				bot.Send(msg)
 			default:
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Undefined command")
 				bot.Send(msg)
 			}
-
 		}
 	}
+}
+
+func createCommon(art artifact, c chan artifact) string {
+	go art.newItem(c)
+	art = <-c
+	msg := fmt.Sprintf("*" + art.itemName + "*" + ". " + art.description) //формирование markdown сообщения для вывода
+	return msg
+}
+
+var createUncommon = func(art artifact, c chan artifact, c1 chan artifact) string {
+	go art.newItem(c)
+	go newPostAtt(c, c1)
+	art = <-c1
+	msg := fmt.Sprintf("*" + art.itemName + " " + art.postAttribute + "*" + ". " + art.description)
+	return msg
+}
+var createRare = func(art artifact, c chan artifact, c1 chan artifact, c2 chan artifact) string {
+	go art.newItem(c)
+	go newPostAtt(c, c1)
+	go newPreAtt(c1, c2)
+	art = <-c2
+	msg := fmt.Sprintf("*" + art.preAttribute + " " + strings.ToLower(art.itemName) + " " + art.postAttribute + "*" + ". " + art.description)
+	return msg
+}
+
+type artifact struct {
+	item
+	description   string
+	preAttribute  string // Атрибут перед названием предмета
+	postAttribute string // Атрибут после названия предмета
+}
+type item struct {
+	itemName  string
+	itemGenus string
+}
+
+const (
+	itemsList         = "./items.csv"         // список предметов с описаниями и указанием на родовое окончание
+	postAttributeList = "./postAttribute.csv" // список  пост-атрибутов (после названия) с описаниями
+	preAttributeList  = "./preAttribute.csv"  // список пре-атрибутов (перед названием) с описаниями и указанием на тип склонения
+	engingsList       = "./engings.csv"       // список окончаний прилагательных
+)
+
+func dump(list string) [][]string {
+	file, err := os.Open(list)
+	defer file.Close()
+	if err != nil {
+		panic(err)
+	}
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return records
+}
+
+func randChoice(records [][]string) int {
+	rand.Seed(time.Now().UnixNano())
+	randRow := rand.Intn(len(records))
+	return randRow
+}
+
+// Новый предмет в структуре артефакт
+func (art artifact) newItem(c chan artifact) {
+	records := dump(itemsList)
+	name := randChoice(records)
+	art.itemName = records[name][0]
+	art.itemGenus = records[name][1]
+	randColumn := rand.Intn(len(records[name])-2) + 2 // Рандомное описание предмета. Первые две колонки всегда зарезервированы
+	art.description = records[name][randColumn]
+	c <- art
+}
+
+// Добавление пост-атрибута в артефакт
+func newPostAtt(c chan artifact, c1 chan artifact) {
+	records := dump(postAttributeList)
+	name := randChoice(records)
+	art := <-c
+	art.postAttribute = records[name][0]
+	art.description += fmt.Sprintf(" " + records[name][1])
+	c1 <- art
+}
+
+// Добавление пре-атрибута в артефакт
+func newPreAtt(c1 chan artifact, c2 chan artifact) {
+	records := dump(preAttributeList)
+	name := randChoice(records)
+	declension, _ := strconv.Atoi(records[name][1])
+	art := <-c1
+	ending := endingGenerate(art.itemGenus, declension)
+	art.preAttribute = fmt.Sprintf(records[name][0] + ending)
+	art.description += fmt.Sprintf(" " + records[name][2])
+	c2 <- art
+}
+
+func endingGenerate(genus string, declension int) string {
+	records := dump(engingsList)
+	var ending string
+	switch genus {
+	case "ж":
+		ending = records[declension][1]
+	case "с":
+		ending = records[declension][2]
+	case "мн":
+		ending = records[declension][3]
+	default:
+		ending = records[declension][0]
+	}
+	return ending
 }
