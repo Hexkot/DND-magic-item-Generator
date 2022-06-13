@@ -71,34 +71,11 @@ func main() {
 				msg.ParseMode = "markdown"
 				bot.Send(msg)
 			default:
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Undefined command")
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда")
 				bot.Send(msg)
 			}
 		}
 	}
-}
-
-func createCommon(art artifact, c chan artifact) string {
-	go art.newItem(c)
-	art = <-c
-	msg := fmt.Sprintf("*" + art.itemName + "*" + ". " + art.description) //формирование markdown сообщения для вывода
-	return msg
-}
-
-var createUncommon = func(art artifact, c chan artifact, c1 chan artifact) string {
-	go art.newItem(c)
-	go newPostAtt(c, c1)
-	art = <-c1
-	msg := fmt.Sprintf("*" + art.itemName + " " + art.postAttribute + "*" + ". " + art.description)
-	return msg
-}
-var createRare = func(art artifact, c chan artifact, c1 chan artifact, c2 chan artifact) string {
-	go art.newItem(c)
-	go newPostAtt(c, c1)
-	go newPreAtt(c1, c2)
-	art = <-c2
-	msg := fmt.Sprintf("*" + art.preAttribute + " " + strings.ToLower(art.itemName) + " " + art.postAttribute + "*" + ". " + art.description)
-	return msg
 }
 
 type artifact struct {
@@ -112,6 +89,35 @@ type item struct {
 	itemGenus string
 }
 
+// ГЕНЕРАЦИЯ ПРЕДМЕТОВ
+// создать обычный предмет
+func createCommon(art artifact, c chan artifact) string {
+	go art.newItem(c)
+	art = <-c
+	msg := fmt.Sprintf("*" + art.itemName + "*" + ". " + art.description) //формирование markdown сообщения для вывода
+	return msg
+}
+
+// создать необычный предмет (не помню почему именно так, возможно просто моё баловство)
+var createUncommon = func(art artifact, c chan artifact, c1 chan artifact) string {
+	go art.newItem(c)
+	go newPostAtt(c, c1)
+	art = <-c1
+	msg := fmt.Sprintf("*" + art.itemName + " " + art.postAttribute + "*" + ". " + art.description)
+	return msg
+}
+
+// создать редкий предмет
+var createRare = func(art artifact, c chan artifact, c1 chan artifact, c2 chan artifact) string {
+	go art.newItem(c)
+	go newPostAtt(c, c1)
+	go newPreAtt(c1, c2)
+	art = <-c2
+	msg := fmt.Sprintf("*" + art.preAttribute + " " + strings.ToLower(art.itemName) + " " + art.postAttribute + "*" + ". " + art.description)
+	return msg
+}
+
+// РАБОТА С ОБЪЕКТАМИ
 const (
 	itemsList         = "./lists/items.csv"         // список предметов с описаниями и указанием на родовое окончание
 	postAttributeList = "./lists/postAttribute.csv" // список  пост-атрибутов (после названия) с описаниями
@@ -119,6 +125,7 @@ const (
 	engingsList       = "./lists/engings.csv"       // список окончаний прилагательных
 )
 
+// читаем csv
 func dump(list string) [][]string {
 	file, err := os.Open(list)
 	defer file.Close()
@@ -133,6 +140,7 @@ func dump(list string) [][]string {
 	return records
 }
 
+// функция для рандомного выбора объекта из любого списка
 func randChoice(records [][]string) int {
 	rand.Seed(time.Now().UnixNano())
 	randRow := rand.Intn(len(records))
@@ -142,12 +150,12 @@ func randChoice(records [][]string) int {
 // Новый предмет в структуре артефакт
 func (art artifact) newItem(c chan artifact) {
 	records := dump(itemsList)
-	name := randChoice(records)
-	art.itemName = records[name][0]
-	art.itemGenus = records[name][1]
-	randColumn := rand.Intn(len(records[name])-2) + 2 // Рандомное описание предмета. Первые две колонки всегда зарезервированы
-	art.description = records[name][randColumn]
-	c <- art
+	name := randChoice(records)                       // выбор рандомного предмета:
+	art.itemName = records[name][0]                   // название (палка, монокль)
+	art.itemGenus = records[name][1]                  // род — нужен для прилагательного
+	randColumn := rand.Intn(len(records[name])-2) + 2 // Рандомное описание предмета. Первые две колонки всегда зарезервированы — так делать скорее неправильно,
+	art.description = records[name][randColumn]       // но мы отталкиваемся от того, что так удобнее геймдизайнерам
+	c <- art                                          //предмет готов — передаём на конвейер
 }
 
 // Добавление пост-атрибута в артефакт
@@ -163,15 +171,16 @@ func newPostAtt(c chan artifact, c1 chan artifact) {
 // Добавление пре-атрибута в артефакт
 func newPreAtt(c1 chan artifact, c2 chan artifact) {
 	records := dump(preAttributeList)
-	name := randChoice(records)
-	declension, _ := strconv.Atoi(records[name][1])
-	art := <-c1
-	ending := endingGenerate(art.itemGenus, declension)
+	name := randChoice(records)                         //выбираем прилагательное
+	declension, _ := strconv.Atoi(records[name][1])     //определяем склонение
+	art := <-c1                                         // забираем предмет с конвейера
+	ending := endingGenerate(art.itemGenus, declension) //получаем окончание
 	art.preAttribute = fmt.Sprintf(records[name][0] + ending)
 	art.description += fmt.Sprintf(" " + records[name][2])
 	c2 <- art
 }
 
+// генерация родового окончания
 func endingGenerate(genus string, declension int) string {
 	records := dump(engingsList)
 	var ending string
